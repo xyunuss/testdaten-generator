@@ -56,12 +56,3 @@ Im Lösungsschlüssel steht bei jeder betroffenen Zeile in der Spalte „Testfal
 node tests/run-tests.js
 ```
 Es braucht nur Node.js und keine weitere Installation. Die Tests laden den Generator direkt aus der HTML-Datei, geprüft wird also genau der Code, den die Nutzerin benutzt. 28 Prüfungen über 4 Personas × 6 Szenarien × 4 Formate, darunter: exakte Zeilenzahl, keine Wochenendbuchungen, gültige IBANs, Kopfzeile identisch mit der Beispiel-CSV, Saldo geht auf, gleicher Seed ergibt dieselbe Datei, jeder Testfall verändert nur seine eigenen Zeilen.
-
-## Was noch fehlt, und warum
-- **Die drei weiteren Formate sind nachgebaut, nicht gegen echte Exporte geprüft.** Ich habe sie aus öffentlich bekanntem Wissen über diese Exporte rekonstruiert. Nächster Schritt: Anonymisierte Header echter Exporte aus dem Team einsammeln und Spalten 1:1 abgleichen. Ein neues Format ist nur eine kleine `render`-Funktion im Code.
-- **Kaputte Dateien** (fehlende Spalten, leere Zeilen, abgeschnittene Datei) sind noch kein Testfall. Die fachlichen Fälle (Abo, Storno, Rücklastschrift …) hatten Vorrang, weil sie die Copilot-Logik testen und nicht nur den Parser.
-- **Teilen-Link und lokale Datei:** Über die Online-Version reicht ein Klick auf den geteilten Link. Bei der lokalen Datei enthält der Link den eigenen Ordnerpfad, deshalb gibt es das Feld „Link von jemand anderem öffnen“.
-- **Nächster Schritt: Kategorisierung automatisch prüfen.** Das App-Ergebnis hochladen, mit dem Lösungsschlüssel abgleichen und dann z. B. „87 % richtig, Lieferando als Lebensmittel statt Lieferdienst“ anzeigen. Das braucht das Exportformat der App, deshalb ist es noch nicht gebaut.
-- **Screenshot nur als HTML/PDF:** Ein echtes PNG würde eine Bibliothek aus dem Internet brauchen. Ich wollte, dass das Tool offline läuft.
-- **Händlernamen:** Große Ketten und Abos (REWE, Netflix …) sind echte Namen, wie in der Beispiel-CSV. Sonst könnte die Kategorisierung nicht realistisch getestet werden. Arbeitgeber, Vermieter, Versicherer und alle Personen sind „Beispiel …“-Namen, und die IBANs sind erfunden.
-- **Ausbauidee:** Die Generator-Logik hat keine Abhängigkeit zum Browser (`<script id="generator">`). Sie könnte 1:1 in einen n8n-Code-Node, z. B. als Formular, das die CSV per Slack schickt, oder in einen automatisierten Import-Test laufen.
