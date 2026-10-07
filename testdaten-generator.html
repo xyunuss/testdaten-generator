@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testdaten-Generator</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #667085; --border: #e3e6eb;
+    --accent: #3b5bdb; --accent-soft: #e8edff; --pos: #1a7f4b; --neg: #1d2330; --warn-bg: #fff4e0; --warn: #8a5300;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 20px 24px 8px; max-width: 1600px; margin: 0 auto; }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; color: var(--muted); }
+  main { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; padding: 16px 24px 40px; max-width: 1600px; margin: 0 auto; }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 32px; } header { padding: 16px 16px 4px; } }
+  main > section { min-width: 0; } /* Spalte bleibt fix breit, lange Inhalte scrollen im eigenen Kasten */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 14px 0 6px; }
+  label:first-child { margin-top: 0; }
+  .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+  input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; background: #fff; color: var(--text); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seed { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  button { font: inherit; border: 1px solid var(--border); background: #fff; color: var(--text); border-radius: 8px; padding: 9px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; width: 100%; margin-top: 18px; padding: 11px; }
+  button.secondary { width: 100%; margin-top: 8px; }
+  .warn { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-top: 14px; }
+  .warn:empty { display: none; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 600px) { .kpis { grid-template-columns: 1fr 1fr; } }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .kpi b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .kpi span { color: var(--muted); font-size: 12px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs button { border-radius: 999px; padding: 6px 14px; }
+  .tabs button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .tablewrap { overflow: auto; max-height: 620px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { position: sticky; top: 0; background: #fafbfc; font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.purpose { white-space: normal; min-width: 220px; color: var(--muted); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+  pre { margin: 0; padding: 14px; background: #0f1420; color: #d8dee9; border-radius: var(--radius); overflow: auto; max-height: 620px; font-size: 12px; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .section { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .section > .hint { display: block; margin: 8px 0 6px; }
+  #tests-box { margin-top: 18px; font-size: 15px; }
+  #tests-box summary { list-style: none; display: flex; align-items: center; gap: 8px; color: var(--text); }
+  #tests-box summary::-webkit-details-marker { display: none; }
+  #tests-box summary b { font-size: 13px; }
+  #tests-box summary::after { content: '▸'; margin-left: auto; color: var(--muted); transition: transform .15s; }
+  #tests-box[open] summary::after { transform: rotate(90deg); }
+  .row2 input { min-width: 0; }
+  label.check { display: flex; gap: 8px; align-items: flex-start; font-weight: 500; font-size: 13px; margin: 7px 0; cursor: pointer; }
+  label.check input { width: auto; margin: 2px 0 0; }
+  label.check small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+  .pill.ev { background: var(--warn-bg); color: var(--warn); }
+  tr.evrow td { background: #fffaf0; }
+  .info { background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; font-size: 13px; }
+  .info:empty { display: none; }
+  .info ul { margin: 4px 0 0; padding-left: 18px; }
+  #share-out, #load-in { margin-top: 8px; font-size: 12px; }
+  details { margin-top: 10px; font-size: 13px; }
+  details summary { cursor: pointer; color: var(--accent); }
+  .loadrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .loadrow button { margin-top: 8px; }
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #1d2330; color: #fff; padding: 10px 16px;
+    border-radius: 10px; font-size: 14px; opacity: 0; pointer-events: none; transition: .25s; max-width: calc(100% - 32px); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Banking-App-Ansicht */
+  .phonewrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .phone { width: 390px; max-width: 100%; background: #f2f3f7; border-radius: 36px; border: 10px solid #111; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, sans-serif; }
+  .status { display: flex; justify-content: space-between; padding: 10px 22px 4px; font-size: 13px; font-weight: 600; background: #1f3a8a; color: #fff; }
+  .acct { background: linear-gradient(160deg, #1f3a8a, #3b5bdb); color: #fff; padding: 12px 22px 22px; }
+  .acct small { opacity: .8; display: block; }
+  .acct .bal { font-size: 32px; font-weight: 700; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .txlist { padding: 4px 0 16px; }
+  .daylabel { font-size: 12px; color: #6b7280; font-weight: 600; padding: 14px 20px 6px; }
+  .tx { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; background: #fff; padding: 10px 16px; border-bottom: 1px solid #eef0f4; }
+  .tx .ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 19px; background: #eef1fb; }
+  .tx .nm { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx .sub { font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx .am { font-weight: 600; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .tx .am.pos { color: var(--pos); }
+  .tx > div { min-width: 0; }
+
+  @media print {
+    body { background: #fff; }
+    header, aside, .kpis, .tabs, .info, #toast, .panel:not(#p-app), .phonewrap .note, .phonewrap button { display: none !important; }
+    main { display: block; padding: 0; }
+    #p-app { display: block !important; }
+    .phone { border-width: 0; border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Testdaten-Generator</h1>
+</header>
+
+<main>
+  <aside class="card">
+    <label for="persona">Wer ist der Kontoinhaber?</label>
+    <select id="persona"></select>
+
+    <label for="format">Bank-Format <span class="hint">(Aufbau der CSV)</span></label>
+    <select id="format"></select>
+
+    <label for="rows">Anzahl Zeilen <span class="hint">(1 bis 5.000)</span></label>
+    <input id="rows" type="number" min="1" max="5000" value="150">
+
+    <label>Zeitraum</label>
+    <div class="row2">
+      <input id="from" type="date" value="2026-04-01" aria-label="von">
+      <input id="to" type="date" value="2026-07-10" aria-label="bis">
+    </div>
+
+    <label for="seed">Seed <span class="hint">(gleicher Seed + gleiche Einstellungen = gleiche Datei)</span></label>
+    <div class="seed">
+      <input id="seed" value="finanzfluss">
+      <button id="reseed" title="Neuen zufälligen Seed würfeln">🎲</button>
+    </div>
+
+    <details class="section" id="tests-box">
+      <summary><b>Testfälle einbauen</b><span class="pill ev" id="ev-count" hidden></span></summary>
+      <span class="hint">Ein Haken ändert nur genau diese Stelle, der restliche Datensatz bleibt gleich.</span>
+      <div id="events"></div>
+      <label class="check"><input type="checkbox" id="legacy"><span>🗂️ Alter Bank-Export<small>Datei in Windows-1252 statt UTF-8, Zeilenende CRLF</small></span></label>
+    </details>
+
+    <button class="primary" id="dl-csv">CSV herunterladen</button>
+    <button class="secondary" id="dl-key" title="Soll-Kategorie je Zeile – zum Prüfen der Kategorisierung">Lösungsschlüssel herunterladen</button>
+
+    <div class="section">
+      <button class="secondary" id="share" style="margin-top:0">🔗 Link zum Reproduzieren kopieren</button>
+      <input id="share-out" readonly hidden aria-label="Link zum Teilen" onclick="this.select()">
+      <span class="hint" style="display:block;margin-top:6px">Fehler gefunden? Link ins Ticket kopieren. Wer ihn öffnet, bekommt exakt dieselbe Datei.</span>
+      <details>
+        <summary>Link von jemand anderem öffnen</summary>
+        <div class="loadrow"><input id="load-in" placeholder="Link hier einfügen"><button id="load">Laden</button></div>
+      </details>
+    </div>
+
+    <div class="warn" id="warn"></div>
+  </aside>
+
+  <section>
+    <div class="kpis">
+      <div class="kpi"><b id="k-rows">–</b><span>Buchungen</span></div>
+      <div class="kpi"><b id="k-month">–</b><span>Ø Buchungen / Monat</span></div>
+      <div class="kpi"><b id="k-flow">–</b><span>Einnahmen / Ausgaben</span></div>
+      <div class="kpi"><b id="k-bal">–</b><span>Kontostand am Ende</span></div>
+    </div>
+
+    <div class="info" id="evinfo"></div>
+
+    <div class="tabs" role="tablist">
+      <button class="active" data-tab="p-table">Tabelle</button>
+      <button data-tab="p-raw">CSV-Rohtext</button>
+      <button data-tab="p-app">Banking-App-Ansicht</button>
+    </div>
+
+    <div class="panel active" id="p-table">
+      <div class="tablewrap"><table id="tbl"></table></div>
+      <p class="note">Die Spalte „Soll-Kategorie“ steht nur in der Vorschau und im Lösungsschlüssel, nicht in der CSV (Banken exportieren keine Kategorien).</p>
+    </div>
+
+    <div class="panel" id="p-raw">
+      <pre id="raw"></pre>
+      <p class="note" id="raw-note"></p>
+    </div>
+
+    <div class="panel" id="p-app">
+      <div class="phonewrap">
+        <div class="phone" id="phone"></div>
+        <button id="print">Als PDF speichern / drucken</button>
+        <p class="note">Für einen Screenshot: Cmd+Shift+4 (Mac) bzw. Win+Shift+S. Beim Drucken wird nur das Handy ausgegeben.</p>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script id="generator">
+// ===========================================================================
+// Generator: reine Logik ohne DOM, deshalb auch in Node oder einem
+// n8n-Code-Node nutzbar.
+// ===========================================================================
+
+// ---------- Zufall (seedbar, damit Tests reproduzierbar sind) ----------
+function makeRng(seedStr) {
+  let h = 1779033703 ^ seedStr.length;
+  for (let i = 0; i < seedStr.length; i++) {
+    h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  let a = h >>> 0;
+  const rnd = () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  rnd.int = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
+  rnd.pick = arr => arr[Math.floor(rnd() * arr.length)];
+  rnd.weighted = pairs => {
+    const total = pairs.reduce((s, p) => s + p[1], 0);
+    let r = rnd() * total;
+    for (const p of pairs) { if ((r -= p[1]) < 0) return p[0]; }
+    return pairs[pairs.length - 1][0];
+  };
+  rnd.normal = () => {
+    const u = 1 - rnd(), v = rnd();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+  rnd.digits = n => Array.from({ length: n }, () => rnd.int(0, 9)).join('');
+  return rnd;
+}
+
+// ---------- Datum (UTC, damit Zeitumstellung nichts verschiebt) ----------
+const DAY = 864e5;
+const D = (y, m, d) => new Date(Date.UTC(y, m, d));
+const addDays = (d, n) => new Date(d.getTime() + n * DAY);
+const pad = n => String(n).padStart(2, '0');
+const parseISO = s => { const [y, m, d] = s.split('-').map(Number); return D(y, m - 1, d); };
+const lastDay = (y, m) => D(y, m + 1, 0).getUTCDate();
+
+function easter(y) { // Gauß/Anonymous Gregorian
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+  return D(y, month - 1, day);
+}
+const holidayCache = {};
+function isHoliday(d) {
+  const y = d.getUTCFullYear();
+  if (!holidayCache[y]) {
+    const e = easter(y);
+    holidayCache[y] = new Set([
+      D(y, 0, 1), D(y, 4, 1), D(y, 9, 3), D(y, 11, 25), D(y, 11, 26),
+      addDays(e, -2), addDays(e, 1), addDays(e, 39), addDays(e, 50),
+    ].map(x => x.getTime()));
+  }
+  return holidayCache[y].has(d.getTime());
+}
+const isBiz = d => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && !isHoliday(d);
+const nextBiz = d => { while (!isBiz(d)) d = addDays(d, 1); return d; };
+const prevBiz = d => { while (!isBiz(d)) d = addDays(d, -1); return d; };
+
+// ---------- Fiktive Bankverbindungen mit gültiger Prüfziffer ----------
+const BANKS = [
+  ['10050000', 'BELADEBEXXX', 'Beispiel Sparkasse'],
+  ['50050000', 'HELADEFFXXX', 'Beispiel Landesbank'],
+  ['12030000', 'BYLADEM1001', 'Beispiel Direktbank'],
+  ['50010517', 'INGDDEFFXXX', 'Beispiel Onlinebank'],
+  ['20040000', 'COBADEHHXXX', 'Beispiel Handelsbank'],
+  ['70020270', 'HYVEDEMMXXX', 'Beispiel Unibank'],
+];
+function mod97(numStr) { let r = 0; for (const ch of numStr) r = (r * 10 + (ch.charCodeAt(0) - 48)) % 97; return r; }
+function makeIban(blz, acct) { const bban = blz + acct; return 'DE' + pad(98 - mod97(bban + '131400')) + bban; }
+function makeCreditorId(national) { return 'DE' + pad(98 - mod97(national + '131400')) + 'ZZZ' + national; }
+
+// ---------- Kategorien für variable Alltagsbuchungen ----------
+// median/spread: Beträge sind log-normalverteilt (viele kleine, wenige große Einkäufe)
+const VAR = {
+  lebensmittel: { cat: 'Lebensmittel', kind: 'card', sunday: false, median: 25, spread: .6, min: 1.49, max: 220,
+    m: [['ALDI NORD', 3], ['ALDI SUED', 1], ['LIDL', 3], ['REWE', 3], ['EDEKA', 2], ['Netto Marken-Discount', 2], ['PENNY', 1], ['Kaufland', 1]] },
+  baecker: { cat: 'Lebensmittel', kind: 'card', sunday: true, median: 4.6, spread: .45, min: 1.2, max: 25, round: 'tenth',
+    m: [['Baeckerei Kamps', 2], ['BACK-FACTORY', 1], ['SumUp *Baeckerei Sonnenkorn', 2], ['Ditsch', 1]] },
+  cafe: { cat: 'Restaurant & Café', kind: 'card', sunday: true, median: 4.9, spread: .4, min: 2.2, max: 22, round: 'tenth',
+    m: [['SPC*Cafe Morgenrot', 2], ['Starbucks', 1], ['SumUp *Kaffeebar Nord', 2], ['Balzac Coffee', 1]] },
+  mensa: { cat: 'Restaurant & Café', kind: 'card', sunday: false, fixedAmounts: [5, 10, 10, 10, 15, 20],
+    m: [['Beispiel Studierendenwerk Mensa', 1]], purpose: 'Aufwertung Mensakarte' },
+  restaurant: { cat: 'Restaurant & Café', kind: 'card', sunday: true, median: 34, spread: .5, min: 8, max: 180,
+    m: [['SumUp *Pizzeria Da Mario', 2], ['Vapiano', 1], ['SumUp *Sushi Kaiten', 1], ['Restaurant Zur Linde', 1], ['SumUp *Thai Garden', 1]] },
+  fastfood: { cat: 'Restaurant & Café', kind: 'card', sunday: true, median: 9.5, spread: .4, min: 3, max: 35,
+    m: [['MCDONALDS', 3], ['BURGER KING', 2], ['Dean+David', 1], ['SumUp *Doener Point', 2]] },
+  lieferdienst: { cat: 'Lieferdienst', kind: 'debit', sunday: true, median: 26, spread: .4, min: 9, max: 80,
+    m: [['Lieferando.de', 3], ['Wolt', 2], ['Uber Eats', 1]] },
+  bar: { cat: 'Freizeit', kind: 'card', sunday: true, median: 18, spread: .6, min: 3.5, max: 90, round: 'tenth',
+    m: [['SumUp *Bar Kiezperle', 1], ['SumUp *Kneipe Eckstein', 1], ['Club Beispiel', 1]] },
+  tanken: { cat: 'Mobilität', kind: 'card', sunday: true, fuel: true,
+    m: [['ARAL Station', 3], ['Shell', 2], ['ESSO Station', 1], ['TotalEnergies', 1], ['JET', 2]] },
+  oepnv: { cat: 'Mobilität', kind: 'card', sunday: true, median: 22, spread: .8, min: 2.9, max: 160,
+    m: [['BVG Ticket App', 1], ['DB Vertrieb GmbH', 2], ['FlixBus', 1]] },
+  drogerie: { cat: 'Drogerie & Gesundheit', kind: 'card', sunday: false, median: 14, spread: .6, min: 1.95, max: 90,
+    m: [['dm-drogerie markt', 3], ['ROSSMANN', 2], ['Mueller Drogerie', 1]] },
+  apotheke: { cat: 'Drogerie & Gesundheit', kind: 'card', sunday: false, median: 13, spread: .7, min: 3.5, max: 120,
+    m: [['Apotheke am Markt', 2], ['Linden-Apotheke', 1]] },
+  kleidung: { cat: 'Shopping', kind: 'card', sunday: false, median: 39, spread: .6, min: 5, max: 250,
+    m: [['H+M', 2], ['PRIMARK', 1], ['C+A', 1], ['TK Maxx', 1], ['Deichmann', 1]] },
+  online: { cat: 'Shopping', kind: 'online', sunday: true, median: 34, spread: .7, min: 4.99, max: 400 },
+  baumarkt: { cat: 'Haus & Garten', kind: 'card', sunday: false, median: 42, spread: .8, min: 3, max: 600,
+    m: [['OBI Markt', 2], ['HORNBACH', 2], ['BAUHAUS', 1], ['toom Baumarkt', 1], ['IKEA Deutschland', 1]] },
+  kinder: { cat: 'Kinder', kind: 'card', sunday: false, median: 24, spread: .6, min: 4, max: 150,
+    m: [['Thalia', 1], ['Smyths Toys', 1], ['Spielwaren Beispiel', 1], ['Decathlon', 1]] },
+  freizeit: { cat: 'Freizeit', kind: 'card', sunday: true, median: 16, spread: .7, min: 5, max: 120,
+    m: [['CinemaxX', 2], ['Eventim', 1], ['SumUp *Freibad Kasse', 1], ['Thalia', 1]] },
+  bargeld: { cat: 'Bargeld', kind: 'cash', sunday: true, fixedAmounts: [20, 50, 50, 100, 100, 150, 200] },
+  privat: { cat: 'Privat (Überweisungen)', kind: 'p2p', sunday: true, median: 25, spread: .7, min: 5, max: 250 },
+};
+
+const SHOPS_PAYPAL = ['Zalando SE', 'eBay GmbH', 'OTTO GmbH', 'MediaMarkt E-Business GmbH', 'Etsy Ireland UC', 'About You SE'];
+const FRIENDS = ['Jonas Muster', 'Mia Beispiel', 'Paul Probe', 'Sophie Testmann', 'Leon Exempel', 'Hannah Muster', 'Ben Beispiel'];
+const P2P_PURPOSES = ['Pizza gestern', 'Konzerttickets', 'Geschenk fuer Tom', 'WG-Einkauf', 'Danke!', 'Urlaub Anteil', 'Tankgeld', 'Festival', 'Kino + Essen'];
+
+// ---------- Personas ----------
+// day: Zahl = Tag im Monat (auf nächsten Bankarbeitstag verschoben), 'lastBiz' = letzter Bankarbeitstag
+// kind: in = Gutschrift, standing = Dauerauftrag, debit = Lastschrift
+const PERSONAS = {
+  studentin: {
+    label: 'Studentin – WG-Zimmer, BAföG + Minijob', owner: 'Lena Beispiel', start: 420, budget: 760,
+    fixed: [
+      { cat: 'Einkommen', cp: 'Beispiel Studierendenwerk', kind: 'in', day: 'lastBiz', amt: 612, p: c => `BAFOEG ${c.mmyyyy} Foerdernr. ${c.ref(9)}` },
+      { cat: 'Einkommen', cp: 'Beispiel Gastro GmbH', kind: 'in', day: 15, amt: 538, jitter: .12, salary: true, p: c => `Lohn ${c.prevMmyyyy} Minijob Pers.Nr. ${c.ref(5)}` },
+      { cat: 'Einkommen', cp: 'Beispiel Elternteil', kind: 'in', day: 1, amt: 250, p: () => 'Unterhalt' },
+      { cat: 'Wohnen', cp: 'Beispiel WG Hauptmieter', kind: 'standing', day: 1, amt: -430, p: c => `Miete WG-Zimmer ${c.mmyyyy}` },
+      { cat: 'Versicherung', cp: 'Beispiel Krankenkasse', kind: 'debit', day: 15, amt: -138.6, p: c => `Beitrag KV/PV Studierende ${c.mmyyyy} Vers.Nr. ${c.ref(10)}` },
+      { cat: 'Mobilfunk & Internet', cp: 'Beispiel Mobilfunk GmbH', kind: 'debit', day: 5, amt: -9.99, p: c => `Rechnung ${c.mmyyyy} Kd-Nr. ${c.ref(8)}` },
+      { cat: 'Abos & Streaming', cp: 'Spotify AB', kind: 'debit', day: 12, amt: -6.99, p: c => `Spotify Premium Student P${c.ref(10)}` },
+      { cat: 'Abos & Streaming', cp: 'Netflix International B.V.', kind: 'debit', day: 20, amt: -4.99, p: c => `Netflix Monthly Subscription ${c.ref(10)}` },
+      { cat: 'Bildung', cp: 'Beispiel Universitaet', kind: 'debit', day: 15, months: [2, 8], amt: -322.5, p: c => `Semesterbeitrag ${c.y} Matr.Nr. ${c.ref(7)}` },
+    ],
+    variable: [['lebensmittel', 28], ['baecker', 6], ['cafe', 12], ['mensa', 10], ['fastfood', 8], ['lieferdienst', 5], ['bar', 7],
+      ['oepnv', 4], ['drogerie', 7], ['apotheke', 1], ['kleidung', 3], ['online', 6], ['freizeit', 3], ['bargeld', 3], ['privat', 7]],
+    over: { lebensmittel: { median: 15, max: 90 }, bargeld: { fixedAmounts: [10, 20, 20, 50] } },
+  },
+  angestellter: {
+    label: 'Angestellter – Single, Mietwohnung, Auto', owner: 'Jonas Beispiel', start: 2350, budget: 1380,
+    fixed: [
+      { cat: 'Einkommen', cp: 'Beispiel Arbeitgeber GmbH', kind: 'in', day: 'lastBiz', amt: 3180, growth: .03, salary: true,
+        extra: c => (c.m === 10 ? 1450 : 0), p: c => `Lohn/Gehalt ${c.mmyyyy} Pers.Nr. ${c.ref(5)}` },
+      { cat: 'Wohnen', cp: 'Beispiel Immobilien GmbH + Co. KG', kind: 'standing', day: 1, amt: -1120, growth: .02,
+        p: c => `Beispiel Immobilien GmbH -Leistungszeitraum ${c.mmyyyy} -MV Nummer ${c.ref(5)}` },
+      { cat: 'Energie', cp: 'Beispiel Energie Vertrieb AG', kind: 'debit', day: 5, amt: -90, p: c => `S/${c.ref(12)}/${c.ref(12, 'b')} Strom Abschlag` },
+      { cat: 'Mobilfunk & Internet', cp: 'Vodafone GmbH', kind: 'debit', day: 8, amt: -39.99, p: c => `Kd-Nr. ${c.ref(9)} Rechnung ${c.mmyyyy} Kabel Internet` },
+      { cat: 'Mobilfunk & Internet', cp: 'Telefonica Germany GmbH + Co. OHG', kind: 'debit', day: 3, amt: -17.99, p: c => `O2 Rechnung ${c.mmyyyy} Kd.Nr. ${c.ref(10)}` },
+      { cat: 'Steuern & Abgaben', cp: 'Rundfunk ARD, ZDF, DRadio', kind: 'debit', day: 15, months: [1, 4, 7, 10], amt: -55.08, p: c => `Rundfunk ${c.mm}.${c.y} - ${pad(((c.m + 2) % 12) + 1)}.${c.y} Beitragsnr. ${c.ref(9)}` },
+      { cat: 'Abos & Streaming', cp: 'Netflix International B.V.', kind: 'debit', day: 18, amt: -13.99, p: c => `Netflix Monthly Subscription ${c.ref(10)}` },
+      { cat: 'Abos & Streaming', cp: 'Spotify AB', kind: 'debit', day: 22, amt: -11.99, p: c => `Spotify Premium P${c.ref(10)}` },
+      { cat: 'Freizeit', cp: 'McFIT GmbH', kind: 'debit', day: 1, amt: -29.9, p: c => `Mitgliedsbeitrag ${c.mmyyyy} Mitgl.Nr. ${c.ref(8)}` },
+      { cat: 'Sparen & Investieren', cp: 'Beispiel Broker AG', kind: 'standing', day: 2, amt: -250, p: c => `Sparplan Depot ${c.ref(10)}` },
+      { cat: 'Versicherung', cp: 'Beispiel Versicherung AG', kind: 'debit', day: 1, months: [3], amt: -64.8, p: c => `Privathaftpflicht ${c.y} Vers.Nr. ${c.ref(10)}` },
+      { cat: 'Versicherung', cp: 'Beispiel Kfz-Versicherung a.G.', kind: 'debit', day: 1, months: [1], amt: -412.37, p: c => `Kfz-Haftpflicht/Teilkasko ${c.y} B-XY ${c.ref(4)}` },
+      { cat: 'Steuern & Abgaben', cp: 'Hauptzollamt Beispielstadt', kind: 'debit', day: 12, months: [6], amt: -94, p: c => `Kfz-Steuer B-XY ${c.ref(4)} ${c.y}` },
+      { cat: 'Abos & Streaming', cp: 'AMAZON EU S.A R.L., NIEDERLASSUNG DEUTSCHLAND', kind: 'debit', day: 9, months: [9], amt: -89.9, p: c => `Prime Mitgliedschaft ${c.ref(3)}-${c.ref(7)}` },
+    ],
+    variable: [['lebensmittel', 24], ['baecker', 6], ['cafe', 8], ['restaurant', 7], ['fastfood', 5], ['lieferdienst', 5], ['bar', 4], ['tanken', 7],
+      ['oepnv', 4], ['drogerie', 6], ['apotheke', 2], ['kleidung', 3], ['online', 8], ['baumarkt', 2], ['freizeit', 4], ['bargeld', 3], ['privat', 3]],
+    over: { lebensmittel: { median: 27 } },
+  },
+  familie: {
+    label: 'Familie – 2 Kinder, Eigenheim, 2 Einkommen', owner: 'Sarah und Tim Beispiel', start: 3600, budget: 3250,
+    fixed: [
+      { cat: 'Einkommen', cp: 'Beispiel Maschinenbau GmbH', kind: 'in', day: 'lastBiz', amt: 3950, growth: .03, salary: true,
+        extra: c => (c.m === 10 ? 1800 : 0), p: c => `Lohn/Gehalt ${c.mmyyyy} Pers.Nr. ${c.ref(5)}` },
+      { cat: 'Einkommen', cp: 'Beispiel Praxis Dr. Muster', kind: 'in', day: 'lastBiz', amt: 1680, growth: .02, salary: true, p: c => `Gehalt ${c.mmyyyy} Teilzeit` },
+      { cat: 'Einkommen', cp: 'Familienkasse Beispielstadt', kind: 'in', day: 10, amt: 510, p: c => `KG${c.ref(10)} Kindergeld ${c.mmyyyy}` },
+      { cat: 'Kredit', cp: 'Beispiel Bausparkasse AG', kind: 'debit', day: 30, amt: -1480, p: c => `Annuitaet Darlehen ${c.ref(10)} Rate ${c.mmyyyy}` },
+      { cat: 'Steuern & Abgaben', cp: 'Stadtkasse Beispielstadt', kind: 'debit', day: 15, months: [2, 5, 8, 11], amt: -118.4, p: c => `Grundsteuer ${c.y} Kassenz. ${c.ref(10)}` },
+      { cat: 'Versicherung', cp: 'Beispiel Versicherung AG', kind: 'debit', day: 1, months: [1], amt: -486.2, p: c => `Wohngebaeudeversicherung ${c.y} Vers.Nr. ${c.ref(10)}` },
+      { cat: 'Versicherung', cp: 'Beispiel Versicherung AG', kind: 'debit', day: 1, months: [3], amt: -89.5, p: c => `Familien-Haftpflicht ${c.y} Vers.Nr. ${c.ref(10, 'h')}` },
+      { cat: 'Energie', cp: 'Beispiel Energie Vertrieb AG', kind: 'debit', day: 5, amt: -145, p: c => `S/${c.ref(12)}/${c.ref(12, 'b')} Strom Abschlag` },
+      { cat: 'Energie', cp: 'Beispiel Stadtwerke GmbH', kind: 'debit', day: 5, amt: -205, p: c => `Abschlag Gas/Wasser ${c.mmyyyy} Vertr. ${c.ref(9)}` },
+      { cat: 'Kinder', cp: 'Beispiel Kita Sonnenschein e.V.', kind: 'debit', day: 1, amt: -310, p: c => `Kitabeitrag + Essen ${c.mmyyyy}` },
+      { cat: 'Kinder', cp: 'Beispiel Sportverein 1920 e.V.', kind: 'debit', day: 1, months: [1, 4, 7, 10], amt: -45, p: c => `Mitgliedsbeitrag Q${Math.floor(c.m / 3) + 1}/${c.y}` },
+      { cat: 'Mobilfunk & Internet', cp: 'Telekom Deutschland GmbH', kind: 'debit', day: 8, amt: -44.95, p: c => `Festnetz/Internet Rechnung ${c.mmyyyy} Kd.Nr. ${c.ref(10)}` },
+      { cat: 'Mobilfunk & Internet', cp: 'Telefonica Germany GmbH + Co. OHG', kind: 'debit', day: 3, amt: -39.98, p: c => `O2 Rechnung ${c.mmyyyy} 2 Vertraege Kd.Nr. ${c.ref(10)}` },
+      { cat: 'Abos & Streaming', cp: 'Netflix International B.V.', kind: 'debit', day: 18, amt: -17.99, p: c => `Netflix Monthly Subscription ${c.ref(10)}` },
+      { cat: 'Abos & Streaming', cp: 'Disney Plus', kind: 'debit', day: 24, amt: -9.99, p: c => `Disney+ Abo ${c.ref(10)}` },
+      { cat: 'Abos & Streaming', cp: 'Spotify AB', kind: 'debit', day: 22, amt: -17.99, p: c => `Spotify Premium Family P${c.ref(10)}` },
+      { cat: 'Steuern & Abgaben', cp: 'Rundfunk ARD, ZDF, DRadio', kind: 'debit', day: 15, months: [1, 4, 7, 10], amt: -55.08, p: c => `Rundfunk ${c.mm}.${c.y} - ${pad(((c.m + 2) % 12) + 1)}.${c.y} Beitragsnr. ${c.ref(9)}` },
+      { cat: 'Versicherung', cp: 'Beispiel Kfz-Versicherung a.G.', kind: 'debit', day: 1, months: [1], amt: -684.1, p: c => `Kfz-Vollkasko ${c.y} B-AB ${c.ref(4)}` },
+      { cat: 'Sparen & Investieren', cp: 'Beispiel Broker AG', kind: 'standing', day: 2, amt: -150, p: c => `Sparplan Kinderdepot ${c.ref(10)}` },
+    ],
+    variable: [['lebensmittel', 30], ['baecker', 8], ['cafe', 3], ['restaurant', 4], ['fastfood', 3], ['lieferdienst', 3], ['tanken', 9],
+      ['drogerie', 9], ['apotheke', 3], ['kleidung', 4], ['online', 9], ['baumarkt', 6], ['kinder', 7], ['freizeit', 4], ['bargeld', 3], ['privat', 1]],
+    over: { lebensmittel: { median: 68, max: 320 }, drogerie: { median: 24 }, baumarkt: { median: 55 }, tanken: { liters: [35, 60] } },
+  },
+  rentner: {
+    label: 'Rentnerin – alleinstehend, Mietwohnung', owner: 'Ingrid Beispiel', start: 3100, budget: 1000,
+    fixed: [
+      { cat: 'Einkommen', cp: 'Beispiel Rentenservice', kind: 'in', day: 'lastBiz', amt: 1720, growth: .04, salary: true, p: c => `Rente ${c.mmyyyy} RV-Nr. ${c.ref(12)}` },
+      { cat: 'Einkommen', cp: 'Beispiel Pensionskasse VVaG', kind: 'in', day: 1, amt: 214.3, p: c => `Betriebsrente ${c.mmyyyy} Nr. ${c.ref(8)}` },
+      { cat: 'Wohnen', cp: 'Beispiel Wohnungsbau eG', kind: 'standing', day: 1, amt: -690, growth: .02, p: c => `Nutzungsentgelt ${c.mmyyyy} Whg. ${c.ref(4)}` },
+      { cat: 'Energie', cp: 'Beispiel Energie Vertrieb AG', kind: 'debit', day: 10, amt: -58, p: c => `S/${c.ref(12)}/${c.ref(12, 'b')} Strom Abschlag` },
+      { cat: 'Mobilfunk & Internet', cp: 'Telekom Deutschland GmbH', kind: 'debit', day: 12, amt: -34.95, p: c => `Festnetz Rechnung ${c.mmyyyy} Kd.Nr. ${c.ref(10)}` },
+      { cat: 'Abos & Streaming', cp: 'Beispiel Verlag GmbH', kind: 'debit', day: 3, amt: -42.9, p: c => `Abo Tageszeitung ${c.mmyyyy} Abo-Nr. ${c.ref(7)}` },
+      { cat: 'Abos & Streaming', cp: 'APPLE.COM/BILL', kind: 'debit', day: 6, amt: -2.99, p: c => `iCloud+ 50 GB ${c.ref(10)}` },
+      { cat: 'Versicherung', cp: 'Beispiel Krankenversicherung AG', kind: 'debit', day: 1, amt: -27.4, p: c => `Zahnzusatzversicherung ${c.mmyyyy} Vers.Nr. ${c.ref(10)}` },
+      { cat: 'Spenden', cp: 'Beispiel Hilfswerk e.V.', kind: 'standing', day: 15, amt: -20, p: () => 'Spende Dauerauftrag Vielen Dank' },
+      { cat: 'Steuern & Abgaben', cp: 'Rundfunk ARD, ZDF, DRadio', kind: 'debit', day: 15, months: [1, 4, 7, 10], amt: -55.08, p: c => `Rundfunk ${c.mm}.${c.y} - ${pad(((c.m + 2) % 12) + 1)}.${c.y} Beitragsnr. ${c.ref(9)}` },
+      { cat: 'Versicherung', cp: 'Beispiel Versicherung AG', kind: 'debit', day: 1, months: [3], amt: -58.9, p: c => `Privathaftpflicht ${c.y} Vers.Nr. ${c.ref(10)}` },
+    ],
+    variable: [['lebensmittel', 32], ['baecker', 14], ['cafe', 4], ['restaurant', 4], ['apotheke', 9], ['drogerie', 6], ['bargeld', 6], ['tanken', 2],
+      ['oepnv', 3], ['kleidung', 2], ['online', 2], ['baumarkt', 2], ['freizeit', 2], ['privat', 2]],
+    over: { lebensmittel: { median: 21, max: 120 }, restaurant: { median: 38 }, apotheke: { median: 16 }, bargeld: { fixedAmounts: [50, 50, 100, 100, 150, 200] } },
+    p2pPurposes: ['Geburtstag Enkel', 'Fuer Weihnachten', 'Danke fuers Einkaufen', 'Zuschuss Klassenfahrt'],
+  },
+};
+
+// ---------- Bank-Formate ----------
+const fmtDate = (d, short) => `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${short ? String(d.getUTCFullYear()).slice(2) : d.getUTCFullYear()}`;
+const isoDate = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+const dot = c => (c / 100).toFixed(2);
+function de(c, thousands = true) {
+  const neg = c < 0, [i, f] = (Math.abs(c) / 100).toFixed(2).split('.');
+  return (neg ? '-' : '') + (thousands ? i.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : i) + ',' + f;
+}
+const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+const clean = v => String(v ?? '').replace(/[;\r\n]/g, ' ');
+
+function cardPurpose(t, style) {
+  const d = t.valuta;
+  if (style === 'sparkasse') return `${isoDate(d)}T${t.time} Debitk.${t.cardNo} ${t.cardExp}`;
+  if (style === 'ing') return `VISA Debitkartenumsatz ${fmtDate(d)} ${t.time} ${t.cp}`;
+  if (style === 'dkb') return `${isoDate(d)} Debitk.${t.cardNo} VISA Debit`;
+  return 'Karteneinsatz';
+}
+function purposeFor(t, style) {
+  if (t.kind === 'card') return (t.fixedPurpose || cardPurpose(t, style)) + (t.fxSuffix || '');
+  if (t.kind === 'cash') return style === 'beispielbank' ? 'Bargeldauszahlung' : `Bargeldauszahlung GA NR${t.atm} ${fmtDate(t.valuta)} ${t.time}`;
+  return t.purpose;
+}
+const BUCHUNGSTEXT = {
+  sparkasse: { card: 'KARTENZAHLUNG', debit: 'FOLGELASTSCHRIFT', online: 'FOLGELASTSCHRIFT', standing: 'DAUERAUFTRAG', p2pOut: 'ONLINE-UEBERWEISUNG',
+    in: 'GUTSCHR. UEBERWEISUNG', salary: 'LOHN GEHALT', cash: 'BARGELDAUSZAHLUNG', refund: 'GUTSCHR. UEBERWEISUNG', p2pIn: 'GUTSCHR. UEBERWEISUNG',
+    return: 'RUECKLASTSCHRIFT', cardRefund: 'GUTSCHRIFT', fee: 'ENTGELT' },
+  ing: { card: 'Lastschrift', debit: 'Lastschrift', online: 'Lastschrift', standing: 'Dauerauftrag/Terminueberweisung', p2pOut: 'Ueberweisung',
+    in: 'Gutschrift', salary: 'Gehalt/Rente', cash: 'Bargeldauszahlung', refund: 'Gutschrift', p2pIn: 'Gutschrift',
+    return: 'Ruecklastschrift', cardRefund: 'Gutschrift', fee: 'Entgelt' },
+};
+const btext = (t, f) => BUCHUNGSTEXT[f][t.kind === 'in' && t.salary ? 'salary' : t.kind];
+
+const FORMATS = {
+  beispielbank: {
+    label: 'Beispielbank (wie Beispiel-CSV aus dem Anhang)',
+    render(txs) {
+      const head = 'Wertstellungsdatum;Buchungsdatum;Betrag;Steuerbetrag;Währung;Zweck;Gegenstelle;IBAN der Gegenstelle;BIC der Gegenstelle;BLZ der Gegenstelle;Bankname der Gegenstelle;Mandatsreferenz der Gegenstelle;Kundenreferenz der Gegenstelle;Gläubiger-ID der Gegenstelle;Transaktionstyp;ZKA-Code;SWIFT-Nachrichtentyp;Kommentar';
+      const lines = txs.map(t => [fmtDate(t.valuta), fmtDate(t.booking), dot(t.cents), '0.0', 'EUR', purposeFor(t, 'beispielbank'), t.cp,
+        t.iban, t.bic, t.blz, t.bank, t.mandate, t.e2e, t.creditorId, t.cents >= 0 ? 'Einzahlung' : 'Auszahlung', '', '', ''].map(clean).join(';'));
+      return [head, ...lines].join('\n') + '\n';
+    },
+  },
+  sparkasse: {
+    label: 'Sparkasse-Stil (CSV-CAMT V2)',
+    render(txs, meta) {
+      const head = ['Auftragskonto', 'Buchungstag', 'Valutadatum', 'Buchungstext', 'Verwendungszweck', 'Glaeubiger ID', 'Mandatsreferenz', 'Kundenreferenz (End-to-End)',
+        'Sammlerreferenz', 'Lastschrift Ursprungsbetrag', 'Auslagenersatz Ruecklastschrift', 'Beguenstigter/Zahlungspflichtiger', 'Kontonummer/IBAN', 'BIC (SWIFT-Code)', 'Betrag', 'Waehrung', 'Info'];
+      const lines = txs.map(t => [meta.iban, fmtDate(t.booking, true), fmtDate(t.valuta, true), btext(t, 'sparkasse'), purposeFor(t, 'sparkasse'), t.creditorId, t.mandate,
+        t.e2e, '', t.ursprung ? de(t.ursprung, false) : '', '', t.cp, t.iban, t.bic, de(t.cents, false), 'EUR', 'Umsatz gebucht'].map(q).join(';'));
+      return [head.map(q).join(';'), ...lines].join('\n') + '\n';
+    },
+  },
+  dkb: {
+    label: 'DKB-Stil (mit Kopfbereich)',
+    render(txs, meta) {
+      const pre = [[`Girokonto`, meta.iban], [''], [`Kontostand vom ${fmtDate(meta.created)}:`, de(meta.endBalance) + ' €'], ['']];
+      const head = ['Buchungsdatum', 'Wertstellung', 'Status', 'Zahlungspflichtige*r', 'Zahlungsempfänger*in', 'Verwendungszweck', 'Umsatztyp', 'IBAN', 'Betrag (€)', 'Gläubiger-ID', 'Mandatsreferenz', 'Kundenreferenz'];
+      const lines = txs.map(t => {
+        const out = t.cents < 0;
+        return [fmtDate(t.booking, true), fmtDate(t.valuta, true), 'Gebucht', out ? meta.owner : t.cp, out ? t.cp : meta.owner, purposeFor(t, 'dkb'),
+          out ? 'Ausgang' : 'Eingang', t.iban, de(t.cents), t.creditorId, t.mandate, t.e2e].map(q).join(';');
+      });
+      return [...pre.map(r => r.map(q).join(';')), head.map(q).join(';'), ...lines].join('\n') + '\n';
+    },
+  },
+  ing: {
+    label: 'ING-Stil (mit Kopfbereich + Saldo je Zeile)',
+    render(txs, meta) {
+      const pre = [
+        `Umsatzanzeige;Datei erstellt am: ${fmtDate(meta.created)} 08:45`, ';Letztes Update: aktuell', '',
+        `IBAN;${meta.iban.replace(/(.{4})/g, '$1 ').trim()}`, 'Kontoname;Girokonto', 'Bank;ING', `Kunde;${meta.owner}`,
+        `Zeitraum;${fmtDate(meta.from)} - ${fmtDate(meta.to)}`, `Saldo;${de(meta.endBalance)};EUR`, '', 'Sortierung;Datum absteigend', '',
+        'In der CSV-Datei finden Sie alle bereits gebuchten Umsätze. Die vorgemerkten Umsätze werden nicht aufgenommen, auch wenn sie in Ihrem Internetbanking angezeigt werden.', '',
+      ];
+      const head = 'Buchung;Wertstellungsdatum;Auftraggeber/Empfänger;Buchungstext;Verwendungszweck;Saldo;Währung;Betrag;Währung';
+      const lines = txs.map(t => [fmtDate(t.booking), fmtDate(t.valuta), t.cp, btext(t, 'ing'), purposeFor(t, 'ing'), de(t.balance), 'EUR', de(t.cents), 'EUR'].map(clean).join(';'));
+      return [...pre, head, ...lines].join('\n') + '\n';
+    },
+  },
+};
+
+// ---------- Testfälle (gezielte Ereignisse für Import- und Copilot-Tests) ----------
+// Jeder Testfall nutzt einen eigenen Zufallsstrom. Ein Haken ändert also nur genau
+// dieses Ereignis, der restliche Datensatz bleibt Zeile für Zeile gleich.
+const EVENTS = {
+  abo_teurer: { label: '📈 Abo wird teurer', hint: 'Preiserhöhung ab der Mitte des Zeitraums' },
+  abo_neu: { label: '➕ Neues Abo kommt dazu', hint: 'ab der Mitte des Zeitraums, monatlich' },
+  abo_weg: { label: '✂️ Abo wird gekündigt', hint: 'Abbuchungen hören ab der Mitte auf' },
+  gehalt: { label: '💼 Einkommen ändert sich', hint: 'Jobwechsel mit +8 % bzw. Rentenanpassung' },
+  ruecklastschrift: { label: '↩️ Rücklastschrift', hint: 'Lastschrift wird per Widerspruch zurückgeholt' },
+  storno: { label: '🧾 Kartenzahlung storniert', hint: 'Einkauf und Gutschrift über denselben Betrag' },
+  fremdwaehrung: { label: '💱 Zahlung in Fremdwährung', hint: 'USD/GBP/CHF plus Auslandseinsatzentgelt' },
+};
+const NEW_ABOS = [
+  ['Google Ireland Ltd.', 12.99, 'YouTube Premium'], ['Disney Plus', 9.99, 'Disney+ Abo'],
+  ['Audible GmbH', 9.95, 'Audible Mitgliedschaft'], ['DAZN Limited', 34.99, 'DAZN Monatsabo'],
+];
+const FX = [['AMZN Mktp US', 'USD', 1.0832], ['Steam Purchase', 'USD', 1.0832], ['TFL TRAVEL CHARGE', 'GBP', 0.8471], ['COOP Zuerich', 'CHF', 0.9406]];
+const GENERATOR_VERSION = 2;
+
+// ---------- Kern: Transaktionen erzeugen ----------
+function generate({ persona, rows, from, to, seed, events = [] }) {
+  const P = PERSONAS[persona];
+  if (!P) return { error: 'Unbekannte Persona.' };
+  const rnd = makeRng(`${seed}|${persona}`);
+  const warnings = [];
+  const fromD = parseISO(from), toD = parseISO(to);
+  if (!(toD >= fromD)) return { error: 'Das Enddatum liegt vor dem Startdatum.' };
+  if (!(rows >= 1 && rows <= 5000)) return { error: 'Bitte zwischen 1 und 5000 Zeilen wählen.' };
+
+  // Stabile Stammdaten je Gegenstelle: gleiche IBAN, Mandat, Kundennummer in jedem Monat
+  const parties = {};
+  const party = (name, r = rnd) => {
+    if (!parties[name]) {
+      const [blz, bic, bank] = r.pick(BANKS);
+      parties[name] = { iban: makeIban(blz, r.digits(10)), bic, blz, bank, refs: {},
+        mandate: 'M' + r.digits(r.int(10, 15)), creditorId: makeCreditorId('0000' + r.digits(7)) };
+    }
+    return parties[name];
+  };
+  const refFor = (name, r = rnd) => (n, salt = '') => {
+    const refs = party(name, r).refs; const k = n + salt;
+    return refs[k] || (refs[k] = r.digits(n));
+  };
+
+  const txs = [];
+  const push = (t) => {
+    const pt = t.noParty ? null : party(t.cp);
+    const sepa = t.kind === 'debit' || t.kind === 'online'; // nur Lastschriften haben Mandat + Gläubiger-ID
+    const tx = Object.assign({ iban: '', bic: '', blz: '', bank: '', mandate: '', creditorId: '', e2e: '' },
+      pt && { iban: pt.iban, bic: pt.bic, blz: pt.blz, bank: pt.bank, mandate: sepa ? pt.mandate : '', creditorId: sepa ? pt.creditorId : '' }, t);
+    txs.push(tx);
+    return tx;
+  };
+
+  // 1) Fixkosten und Einkommen: feste Tage, feste Beträge
+  const yearsFrom = y => y - 2026;
+  const ctxFor = (y, m, ref) => ({ y, m, mm: pad(m + 1), mmyyyy: `${pad(m + 1)}/${y}`, prevMmyyyy: m === 0 ? `12/${y - 1}` : `${pad(m)}/${y}`, ref });
+  const eachMonth = fn => { for (let y = fromD.getUTCFullYear(), m = fromD.getUTCMonth(); D(y, m, 1) <= toD; m === 11 ? (y++, m = 0) : m++) fn(y, m); };
+  const dayIn = (y, m, day) => day === 'lastBiz' ? prevBiz(D(y, m, lastDay(y, m))) : nextBiz(D(y, m, Math.min(day, lastDay(y, m))));
+  eachMonth((y, m) => {
+    for (const s of P.fixed) {
+      if (s.months && !s.months.includes(m + 1)) continue;
+      const date = dayIn(y, m, s.day);
+      if (date < fromD || date > toD) continue;
+      const c = ctxFor(y, m, refFor(s.cp));
+      let amt = s.amt * Math.pow(1 + (s.growth || 0), yearsFrom(y));
+      if (s.jitter) amt *= 1 + (rnd() * 2 - 1) * s.jitter;
+      if (s.extra) amt += s.extra(c);
+      push({ valuta: date, booking: date, cents: Math.round(amt * 100), cp: s.cp, purpose: s.p(c), kind: s.kind, salary: s.salary, cat: s.cat, fixed: true,
+        e2e: s.kind === 'debit' ? 'NOTPROVIDED' : '' });
+    }
+  });
+  const fixed = txs.splice(0);
+  if (fixed.length > rows) {
+    warnings.push(`Im Zeitraum fallen ${fixed.length} feste Buchungen an (Gehalt, Miete, Abos …), aber nur ${rows} Zeilen sind gewünscht. Es wurden zufällig feste Buchungen weggelassen. Tipp: mehr Zeilen oder kürzerer Zeitraum.`);
+    while (fixed.length > rows) fixed.splice(rnd.int(0, fixed.length - 1), 1);
+  }
+  txs.push(...fixed);
+
+  // 2) Alltagsbuchungen: Kategorie nach Persona-Gewicht, Händler mit Lieblingsladen, Betrag log-normal
+  const cats = {};
+  for (const [key] of P.variable) {
+    const base = VAR[key], o = (P.over || {})[key] || {};
+    const cfg = Object.assign({}, base, o);
+    if (cfg.m) { // Jeder Mensch hat einen Lieblingsladen
+      const fav = rnd.int(0, cfg.m.length - 1);
+      cfg.m = cfg.m.map(([n, w], i) => [n, i === fav ? w * 4 : w]);
+    }
+    cats[key] = cfg;
+  }
+  const spanDays = Math.round((toD - fromD) / DAY) + 1;
+  const WEEKDAY_W = [0.35, 0.8, 0.85, 0.9, 1, 1.25, 1.45]; // So..Sa: freitags/samstags wird mehr eingekauft
+  const pickDate = (sundayOk, r = rnd) => {
+    for (let i = 0; i < 50; i++) {
+      const d = addDays(fromD, r.int(0, spanDays - 1)), wd = d.getUTCDay();
+      if (wd === 0 && !sundayOk) continue;
+      if (isHoliday(d) && !sundayOk) continue;
+      if (r() < WEEKDAY_W[wd] / 1.45) return d;
+    }
+    return addDays(fromD, r.int(0, spanDays - 1));
+  };
+  const amountFor = (cfg, r = rnd) => {
+    if (cfg.fixedAmounts) return r.pick(cfg.fixedAmounts);
+    if (cfg.fuel) { const [lo, hi] = cfg.liters || [25, 50]; return (lo + r() * (hi - lo)) * (1.62 + r() * 0.22); }
+    let v = cfg.median * Math.exp(r.normal() * cfg.spread);
+    v = Math.min(cfg.max, Math.max(cfg.min, v));
+    return cfg.round === 'tenth' ? Math.round(v * 10) / 10 : v;
+  };
+  const p2pPurposes = P.p2pPurposes || P2P_PURPOSES;
+  const makeVariable = () => {
+    const key = rnd.weighted(P.variable), cfg = cats[key];
+    const day = pickDate(cfg.sunday);
+    const time = `${pad(rnd.int(cfg.cat === 'Bargeld' ? 8 : 7, 21))}:${pad(rnd.int(0, 59))}`;
+    let euros = amountFor(cfg);
+    const scalable = !cfg.fixedAmounts && cfg.round !== 'tenth' && !cfg.fuel && cfg.kind !== 'p2p';
+    // Kartenzahlungen werden am nächsten Bankarbeitstag gebucht, oft einen Tag später
+    const cardBooking = () => { let b = nextBiz(day); if (rnd() < 0.35) b = nextBiz(addDays(b, 1)); return b; };
+    if (cfg.kind === 'card') {
+      return push({ valuta: day, booking: cardBooking(), cents: -Math.round(euros * 100), cp: rnd.weighted(cfg.m), kind: 'card', cat: cfg.cat, time, scalable,
+        noParty: true, fixedPurpose: cfg.purpose });
+    } else if (cfg.kind === 'cash') {
+      return push({ valuta: day, booking: nextBiz(day), cents: -Math.round(euros * 100), cp: 'Bargeldauszahlung', kind: 'cash', cat: cfg.cat, time, noParty: true, atm: rnd.digits(8) });
+    } else if (cfg.kind === 'debit') { // Lieferdienste per Lastschrift
+      const cp = rnd.weighted(cfg.m);
+      return push({ valuta: nextBiz(addDays(day, 1)), booking: nextBiz(addDays(day, 1)), cents: -Math.round(euros * 100), cp, kind: 'debit', cat: cfg.cat, scalable,
+        purpose: `${cp} Bestellung ${rnd.digits(9)}`, e2e: rnd.digits(16) });
+    } else if (cfg.kind === 'online') {
+      const viaAmazon = rnd() < 0.5;
+      const cp = viaAmazon ? 'AMAZON PAYMENTS EUROPE S.C.A.' : 'PayPal Europe S.a.r.l. et Cie S.C.A';
+      const shop = rnd.pick(SHOPS_PAYPAL);
+      const refund = rnd() < 0.08; // gelegentliche Rücksendung
+      const purpose = viaAmazon ? `${refund ? 'Erstattung ' : ''}Amazon.de ${rnd.digits(3)}-${rnd.digits(7)}-${rnd.digits(7)}`
+        : `${rnd.digits(13)} PP.${rnd.digits(4)}.PP . ${shop}, ${refund ? 'Rueckzahlung' : 'Ihr Einkauf bei'} ${shop}`;
+      const b = nextBiz(addDays(day, rnd.int(1, 3)));
+      return push({ valuta: b, booking: b, cents: (refund ? 1 : -1) * Math.round(euros * 100), cp, kind: refund ? 'refund' : 'online', cat: cfg.cat, purpose, scalable,
+        e2e: rnd.digits(13) });
+    }
+    const out = rnd() < 0.55, friend = rnd.pick(FRIENDS), b = nextBiz(day); // p2p
+    euros = Math.round(euros); // Freunde überweisen meist runde Beträge
+    return push({ valuta: b, booking: b, cents: (out ? -1 : 1) * euros * 100, cp: friend, kind: out ? 'p2pOut' : 'p2pIn', cat: cfg.cat, purpose: rnd.pick(p2pPurposes) });
+  };
+  const variableCount = rows - txs.length;
+  for (let i = 0; i < variableCount; i++) makeVariable();
+
+  // 3) Budget-Kalibrierung: Bei wenigen Zeilen pro Monat wären die Ausgaben zu klein und das Konto wüchse
+  //    unrealistisch. Große, frei bepreiste Einkäufe (Supermarkt, Online, nicht Tanken) werden daher in
+  //    Grenzen (x0,6 bis x2) skaliert, damit die Alltagsausgaben grob zum Monatsbudget der Persona passen.
+  //    Kaffee, Bäcker, Bargeld, Mensa bleiben unverändert, sonst kostet ein Cappuccino 9 €.
+  const variable = txs.filter(t => !t.fixed && t.cents < 0);
+  const scalableTx = variable.filter(t => t.scalable);
+  const sumOf = arr => -arr.reduce((s, t) => s + t.cents, 0);
+  const target = P.budget * 100 * (spanDays / 30.44) - (sumOf(variable) - sumOf(scalableTx));
+  let calib = 1;
+  if (scalableTx.length && sumOf(scalableTx) > 0) calib = Math.min(2, Math.max(0.6, target / sumOf(scalableTx)));
+  const applyCalib = t => { if (t.scalable && t.cents < 0) t.cents = Math.min(-100, Math.round(t.cents * calib)); };
+  txs.forEach(applyCalib);
+
+  // Kontodaten vor den Testfällen festlegen, damit Testfälle sie nicht verändern
+  const cardNo = rnd.int(1, 9), cardExp = `${2027 + rnd.int(0, 3)}-${pad(rnd.int(1, 12))}`;
+  const ownerBank = rnd.pick(BANKS), ownerIban = makeIban(ownerBank[0], rnd.digits(10));
+
+  // 4) Testfälle einbauen
+  const evInfo = [];
+  const mid = addDays(fromD, Math.floor(spanDays / 2));
+  const monthlyAbos = P.fixed.filter(s => s.cat === 'Abos & Streaming' && !s.months);
+  const evR = name => makeRng(`${seed}|${persona}|event|${name}`);
+  const eurTxt = c => de(c) + ' €';
+  const has = e => events.includes(e);
+  if ((has('abo_teurer') || has('abo_weg') || has('abo_neu') || has('gehalt')) && spanDays < 45) {
+    warnings.push('Abo- und Einkommens-Testfälle brauchen mindestens ca. 2 Monate Zeitraum, damit vorher/nachher sichtbar ist.');
+  }
+  const priceAbo = has('abo_teurer') && monthlyAbos.length ? evR('abo_teurer').pick(monthlyAbos) : null;
+  if (priceAbo) {
+    const hits = txs.filter(t => t.fixed && t.cp === priceAbo.cp && t.booking >= mid).sort((x, y) => x.booking - y.booking);
+    const oldC = Math.round(priceAbo.amt * 100), newC = oldC - Math.max(100, Math.round(-oldC * 0.15 / 100) * 100);
+    hits.forEach(t => { t.cents = newC; t.event = 'Preiserhöhung Abo'; });
+    if (hits.length) evInfo.push(`📈 ${priceAbo.cp}: ${eurTxt(oldC)} → ${eurTxt(newC)} ab ${fmtDate(hits[0].booking)}`);
+    else warnings.push('„Abo wird teurer“: Nach der Mitte des Zeitraums liegt keine Abbuchung des Abos. Zeitraum verlängern.');
+  }
+  if (has('abo_weg')) {
+    const pool = monthlyAbos.filter(s => s !== priceAbo);
+    const abo = pool.length ? evR('abo_weg').pick(pool) : null;
+    if (!abo) warnings.push('„Abo wird gekündigt“: Diese Persona hat kein weiteres Monatsabo.');
+    else {
+      const before = txs.filter(t => t.fixed && t.cp === abo.cp && t.booking < mid).sort((a, b) => a.booking - b.booking);
+      const after = txs.filter(t => t.fixed && t.cp === abo.cp && t.booking >= mid);
+      after.forEach(t => txs.splice(txs.indexOf(t), 1));
+      if (before.length) before[before.length - 1].event = 'Letzte Abbuchung vor Kündigung';
+      if (after.length) evInfo.push(`✂️ ${abo.cp} gekündigt: ${after.length} Abbuchung(en) ab ${fmtDate(mid)} fallen weg`);
+      else warnings.push('„Abo wird gekündigt“: Nach der Mitte des Zeitraums gäbe es keine Abbuchung mehr. Zeitraum verlängern.');
+    }
+  }
+  if (has('abo_neu')) {
+    const r = evR('abo_neu');
+    const [cp, amt, label] = r.pick(NEW_ABOS.filter(([c]) => !P.fixed.some(s => s.cp === c)));
+    const day = r.int(3, 27), ref = refFor(cp, r)(10);
+    let n = 0;
+    eachMonth((y, m) => {
+      const d = dayIn(y, m, day);
+      if (d < mid || d > toD) return;
+      push({ valuta: d, booking: d, cents: -Math.round(amt * 100), cp, kind: 'debit', cat: 'Abos & Streaming', purpose: `${label} ${ref}`, e2e: 'NOTPROVIDED',
+        event: n++ ? 'Neues Abo' : 'Neues Abo (erste Abbuchung)' });
+    });
+    if (n) evInfo.push(`➕ Neues Abo ${cp} (${eurTxt(-Math.round(amt * 100))}) ab ${fmtDate(mid)}, ${n}× abgebucht`);
+    else warnings.push('„Neues Abo“: Zeitraum zu kurz für eine Abbuchung nach der Mitte.');
+  }
+  if (has('gehalt')) {
+    const r = evR('gehalt');
+    const spec = P.fixed.filter(s => s.salary).sort((a, b) => b.amt - a.amt)[0];
+    const hits = txs.filter(t => t.fixed && t.cp === spec.cp && t.booking >= mid);
+    const isPension = persona === 'rentner';
+    const newCp = 'Beispiel Neuer Arbeitgeber AG';
+    const pt = isPension ? null : party(newCp, r), pers = isPension ? '' : refFor(newCp, r)(5);
+    for (const t of hits) {
+      t.cents = Math.round(t.cents * (isPension ? 1.0424 : 1.08));
+      t.event = isPension ? 'Rentenanpassung' : 'Jobwechsel';
+      if (!isPension) {
+        Object.assign(t, { cp: newCp, iban: pt.iban, bic: pt.bic, blz: pt.blz, bank: pt.bank });
+        t.purpose = `Lohn/Gehalt ${pad(t.booking.getUTCMonth() + 1)}/${t.booking.getUTCFullYear()} Pers.Nr. ${pers}`;
+      }
+    }
+    const first = hits.sort((a, b) => a.booking - b.booking)[0];
+    if (first) evInfo.push(isPension ? `💼 Rentenanpassung +4,24 % ab ${fmtDate(first.booking)}`
+      : `💼 Jobwechsel: ${spec.cp} → ${newCp}, +8 % ab ${fmtDate(first.booking)}`);
+    else warnings.push('„Einkommen ändert sich“: Nach der Mitte des Zeitraums gibt es keine Gehaltszahlung.');
+  }
+  if (has('ruecklastschrift')) {
+    const latest = addDays(toD, -4);
+    const o = txs.filter(t => t.fixed && t.kind === 'debit' && t.booking <= latest)
+      .sort((a, b) => Math.abs(a.booking - mid) - Math.abs(b.booking - mid))[0];
+    if (!o) warnings.push('„Rücklastschrift“: Keine passende Lastschrift im Zeitraum gefunden.');
+    else {
+      const d = nextBiz(addDays(o.booking, evR('ruecklastschrift').int(2, 4)));
+      o.event = 'Lastschrift (später zurückgegeben)';
+      push({ valuta: d, booking: d, cents: -o.cents, cp: o.cp, iban: o.iban, bic: o.bic, blz: o.blz, bank: o.bank, mandate: o.mandate, creditorId: o.creditorId,
+        noParty: true, kind: 'return', cat: o.cat, ursprung: -o.cents, e2e: o.e2e, event: 'Rücklastschrift',
+        purpose: `RUECKLASTSCHRIFT ${o.purpose} Rueckgabegrund MD06 Widerspruch durch Zahler` });
+      evInfo.push(`↩️ Rücklastschrift: ${o.cp} ${eurTxt(o.cents)} vom ${fmtDate(o.booking)}, zurück am ${fmtDate(d)}`);
+    }
+  }
+  if (has('storno')) {
+    const r = evR('storno');
+    const key = ['kleidung', 'baumarkt', 'drogerie', 'lebensmittel'].find(k => cats[k]);
+    const cfg = cats[key];
+    const lastBuy = addDays(toD, -5);
+    const day = lastBuy > fromD ? addDays(fromD, r.int(0, Math.round((lastBuy - fromD) / DAY))) : fromD;
+    const buy = nextBiz(day), cents = -Math.round(amountFor(cfg, r) * Math.max(1, calib) * 100);
+    const cp = r.weighted(cfg.m), back = nextBiz(addDays(buy, r.int(2, 4)));
+    push({ valuta: day, booking: buy, cents, cp, kind: 'card', cat: cfg.cat, time: `${pad(r.int(9, 19))}:${pad(r.int(0, 59))}`, noParty: true,
+      event: 'Kartenzahlung (später storniert)' });
+    push({ valuta: back, booking: back, cents: -cents, cp, kind: 'cardRefund', cat: cfg.cat, noParty: true, event: 'Storno Kartenzahlung',
+      purpose: `Storno Kartenzahlung vom ${fmtDate(day)}` });
+    evInfo.push(`🧾 Storno: ${cp} ${eurTxt(cents)} am ${fmtDate(day)}, Gutschrift am ${fmtDate(back)}`);
+  }
+  if (has('fremdwaehrung')) {
+    const r = evR('fremdwaehrung');
+    const [cp, cur, rate] = r.pick(FX);
+    const day = pickDate(true, r), fa = Math.round(Math.min(250, 28 * Math.exp(r.normal() * 0.6)) * 100) / 100;
+    const cents = -Math.round(fa / rate * 100), b = nextBiz(addDays(day, 1));
+    const faTxt = fa.toFixed(2).replace('.', ',');
+    push({ valuta: day, booking: b, cents, cp, kind: 'card', cat: cur === 'CHF' ? 'Lebensmittel' : (cp.startsWith('TFL') ? 'Mobilität' : 'Shopping'),
+      time: `${pad(r.int(8, 22))}:${pad(r.int(0, 59))}`, noParty: true, fxSuffix: ` ${faTxt} ${cur} Kurs ${String(rate).replace('.', ',')}`, event: 'Fremdwährung' });
+    const fee = Math.min(-1, Math.round(cents * 0.0175));
+    push({ valuta: b, booking: b, cents: fee, cp: 'Beispielbank', kind: 'fee', cat: 'Bankgebühren', noParty: true, event: 'Fremdwährungsentgelt',
+      purpose: `Auslandseinsatzentgelt 1,75 % auf ${de(-cents)} EUR (${cp})` });
+    evInfo.push(`💱 Fremdwährung: ${cp} ${faTxt} ${cur} = ${eurTxt(cents)} + Entgelt ${eurTxt(fee)}`);
+  }
+
+  // Zeilenzahl exakt halten: Für zusätzliche Testfall-Zeilen fallen die zuletzt erzeugten Alltagsbuchungen weg
+  // (bzw. kommen bei einer Kündigung neue dazu). So bleibt der restliche Datensatz identisch.
+  let delta = txs.length - rows;
+  for (let i = txs.length - 1; i >= 0 && delta > 0; i--) if (!txs[i].fixed && !txs[i].event) { txs.splice(i, 1); delta--; }
+  for (let i = txs.length - 1; i >= 0 && delta > 0; i--) if (!txs[i].event) { txs.splice(i, 1); delta--; }
+  while (delta < 0) { applyCalib(makeVariable()); delta++; }
+  if (txs.length > rows) warnings.push(`Für die gewählten Testfälle braucht es mindestens ${txs.length} Zeilen.`);
+
+  // Buchungen, die durch Wochenende/Verzug nach dem Enddatum lägen, auf den letzten Bankarbeitstag
+  // im Zeitraum ziehen (endet der Zeitraum an einem Sonntag, also auf den Freitag davor)
+  const lastBookingDay = prevBiz(toD) >= fromD ? prevBiz(toD) : toD;
+  for (const t of txs) {
+    if (t.booking > lastBookingDay) t.booking = lastBookingDay;
+    if (t.valuta > t.booking) t.valuta = t.booking;
+  }
+
+  // 5) Sortierung und laufender Saldo
+  txs.forEach((t, i) => { t.idx = i; t.cardNo = cardNo; t.cardExp = cardExp; });
+  txs.sort((a, b) => a.booking - b.booking || a.valuta - b.valuta || (b.cents > 0) - (a.cents > 0) || a.idx - b.idx);
+  let bal = Math.round(P.start * 100);
+  for (const t of txs) { bal += t.cents; t.balance = bal; }
+  txs.reverse(); // Banken exportieren neueste Buchung zuerst
+
+  const months = spanDays / 30.44;
+  const perMonth = txs.length / months;
+  if (perMonth > 140) warnings.push(`Ca. ${Math.round(perMonth)} Buchungen pro Monat sind sehr viele für ein Privatkonto. Eventuell den Zeitraum verlängern.`);
+  if (perMonth < 30) warnings.push(`Nur ca. ${Math.round(perMonth)} Buchungen pro Monat. Echte Girokonten haben eher 40 bis 80, deshalb bleibt am Monatsende mehr Geld übrig als realistisch. Für einen echten Saldoverlauf mehr Zeilen oder einen kürzeren Zeitraum wählen.`);
+  if (bal < -150000) warnings.push('Der Kontostand rutscht am Ende stark ins Minus, weil die Zeilenzahl für den Zeitraum hoch ist. Für Tests ok, aber nicht ganz realistisch.');
+
+  const meta = { owner: P.owner, iban: ownerIban, from: fromD, to: toD, created: toD, endBalance: bal, startBalance: P.start * 100 };
+  return { txs, meta, warnings, evInfo };
+}
+
+function toCsv(result, format) { return FORMATS[format].render(result.txs, result.meta); }
+
+function toSolutionKey(result, persona) {
+  const head = 'Zeile;Buchungsdatum;Betrag;Gegenstelle;Soll-Kategorie;Fix/Variabel;Testfall;Persona';
+  return [head, ...result.txs.map((t, i) => [i + 1, fmtDate(t.booking), dot(t.cents), t.cp, t.cat, t.fixed ? 'fix' : 'variabel', t.event || '', persona].map(clean).join(';'))].join('\n') + '\n';
+}
+
+// Alte Bank-Exporte: Windows-1252 statt UTF-8 (Umlaute, €), Zeilenende CRLF
+const CP1252 = { '€': 0x80, '‚': 0x82, '„': 0x84, '…': 0x85, '‘': 0x91, '’': 0x92, '“': 0x93, '”': 0x94, '–': 0x96, '—': 0x97 };
+function toLegacyBytes(text) {
+  const s = text.replace(/\r?\n/g, '\r\n'), out = [];
+  for (const ch of s) { const c = ch.codePointAt(0); out.push(c < 0x80 || (c >= 0xA0 && c <= 0xFF) ? c : (CP1252[ch] ?? 0x3F)); }
+  return new Uint8Array(out);
+}
+
+if (typeof module !== 'undefined') module.exports = { generate, toCsv, toSolutionKey, toLegacyBytes, PERSONAS, FORMATS, EVENTS, GENERATOR_VERSION, makeIban, mod97 };
+</script>
+
+<script>
+// ===========================================================================
+// UI
+// ===========================================================================
+const $ = id => document.getElementById(id);
+for (const [k, p] of Object.entries(PERSONAS)) $('persona').add(new Option(p.label, k));
+for (const [k, f] of Object.entries(FORMATS)) $('format').add(new Option(f.label, k));
+$('persona').value = 'angestellter';
+$('events').innerHTML = Object.entries(EVENTS).map(([k, e]) =>
+  `<label class="check"><input type="checkbox" value="${k}"><span>${e.label}<small>${e.hint}</small></span></label>`).join('');
+
+const ICONS = { 'Einkommen': '💶', 'Wohnen': '🏠', 'Energie': '⚡', 'Versicherung': '🛡️', 'Mobilfunk & Internet': '📶', 'Abos & Streaming': '📺',
+  'Lebensmittel': '🛒', 'Restaurant & Café': '☕', 'Lieferdienst': '🛵', 'Mobilität': '🚗', 'Drogerie & Gesundheit': '💊', 'Shopping': '🛍️',
+  'Freizeit': '🎟️', 'Bargeld': '🏧', 'Kinder': '🧸', 'Haus & Garten': '🔨', 'Sparen & Investieren': '📈', 'Spenden': '🤝', 'Bildung': '🎓',
+  'Privat (Überweisungen)': '👥', 'Kredit': '🏦', 'Steuern & Abgaben': '🧾', 'Bankgebühren': '🏦' };
+const eur = c => de(c) + ' €';
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+// ---------- Einstellungen <-> Link ----------
+// Alles, was die Datei bestimmt, steht im Link. Wer den Link öffnet, erzeugt exakt dieselbe Datei.
+const selectedEvents = () => [...document.querySelectorAll('#events input:checked')].map(i => i.value);
+function params() {
+  return { persona: $('persona').value, format: $('format').value, rows: parseInt($('rows').value, 10), from: $('from').value, to: $('to').value,
+    seed: $('seed').value || 'seed', events: selectedEvents(), legacy: $('legacy').checked };
+}
+function toQuery(p) {
+  const q = new URLSearchParams({ v: GENERATOR_VERSION, persona: p.persona, format: p.format, rows: p.rows, from: p.from, to: p.to, seed: p.seed });
+  if (p.events.length) q.set('tests', p.events.join(','));
+  if (p.legacy) q.set('legacy', '1');
+  return q.toString();
+}
+let linkNote = '';
+function applyQuery(str) {
+  const hash = str.includes('#') ? str.slice(str.indexOf('#') + 1) : str.replace(/^\?/, '');
+  const q = new URLSearchParams(hash);
+  if (!q.has('persona') && !q.has('seed')) return false;
+  const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+  if (PERSONAS[q.get('persona')]) $('persona').value = q.get('persona');
+  if (FORMATS[q.get('format')]) $('format').value = q.get('format');
+  if (+q.get('rows') > 0) $('rows').value = parseInt(q.get('rows'), 10);
+  if (isDate(q.get('from'))) $('from').value = q.get('from');
+  if (isDate(q.get('to'))) $('to').value = q.get('to');
+  if (q.has('seed')) $('seed').value = q.get('seed');
+  const tests = (q.get('tests') || '').split(',');
+  document.querySelectorAll('#events input').forEach(i => { i.checked = tests.includes(i.value); });
+  $('legacy').checked = q.get('legacy') === '1';
+  if (q.get('tests') || q.get('legacy') === '1') $('tests-box').open = true; // geteilte Testfälle sofort sichtbar
+  const v = parseInt(q.get('v'), 10);
+  linkNote = v && v !== GENERATOR_VERSION
+    ? `Dieser Link stammt von Tool-Version ${v}, du nutzt Version ${GENERATOR_VERSION}. Die Daten können deshalb abweichen.` : '';
+  return true;
+}
+
+// ---------- Erzeugen + Anzeigen ----------
+let current = null;
+function run() {
+  const p = params();
+  try { history.replaceState(null, '', '#' + toQuery(p)); } catch (e) { /* z. B. in eingeschränkten Vorschauen */ }
+  const res = generate(p);
+  if (res.error) { $('warn').textContent = res.error; current = null; return; }
+  current = { p, res, csv: toCsv(res, p.format) };
+  const nTests = p.events.length + (p.legacy ? 1 : 0);
+  $('ev-count').hidden = !nTests;
+  $('ev-count').textContent = `${nTests} aktiv`;
+  $('warn').innerHTML = [linkNote, ...res.warnings].filter(Boolean).map(esc).join('<br><br>');
+  $('evinfo').innerHTML = res.evInfo.length
+    ? '<b>Eingebaute Testfälle</b><ul>' + res.evInfo.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '';
+
+  const inc = res.txs.filter(t => t.cents > 0).reduce((s, t) => s + t.cents, 0);
+  const out = res.txs.filter(t => t.cents < 0).reduce((s, t) => s + t.cents, 0);
+  const spanDays = (parseISO(p.to) - parseISO(p.from)) / DAY + 1;
+  $('k-rows').textContent = res.txs.length;
+  $('k-month').textContent = Math.round(res.txs.length / (spanDays / 30.44));
+  $('k-flow').textContent = `+${Math.round(inc / 100).toLocaleString('de-DE')} / ${Math.round(out / 100).toLocaleString('de-DE')} €`;
+  $('k-bal').textContent = eur(res.meta.endBalance);
+  renderTable();
+  $('raw').textContent = current.csv.split('\n').slice(0, 40).join('\n');
+  $('raw-note').textContent = p.legacy
+    ? 'Die ersten 40 Zeilen. Die Datei selbst wird in Windows-1252 mit CRLF gespeichert, Umlaute sehen in UTF-8-Programmen deshalb kaputt aus (gewollt).'
+    : 'Die ersten 40 Zeilen, genau so, wie sie in der Datei stehen.';
+  renderPhone(res);
+}
+
+function renderTable() {
+  const { p, res } = current;
+  const list = res.txs.map((t, i) => [t, i + 1]);
+  $('tbl').innerHTML = '<tr><th>#</th><th>Buchung</th><th>Valuta</th><th>Gegenstelle</th><th>Verwendungszweck</th><th>Betrag</th><th>Soll-Kategorie</th></tr>' +
+    list.slice(0, 300).map(([t, n]) => `<tr${t.event ? ' class="evrow"' : ''}><td class="num">${n}</td><td>${fmtDate(t.booking)}</td><td>${fmtDate(t.valuta)}</td>` +
+      `<td>${esc(t.cp)}</td><td class="purpose">${esc(purposeFor(t, p.format))}</td>` +
+      `<td class="num" style="color:${t.cents > 0 ? 'var(--pos)' : 'inherit'}">${eur(t.cents)}</td>` +
+      `<td><span class="pill">${esc(t.cat)}</span>${t.event ? ` <span class="pill ev">⚑ ${esc(t.event)}</span>` : ''}</td></tr>`).join('');
+}
+
+function renderPhone(res) {
+  const days = new Map();
+  for (const t of res.txs.slice(0, 40)) {
+    const k = t.booking.getTime();
+    if (!days.has(k)) days.set(k, []);
+    days.get(k).push(t);
+  }
+  const dayFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const iban = res.meta.iban;
+  $('phone').innerHTML =
+    `<div class="status"><span>9:41</span><span>▂▄▆ 5G 🔋</span></div>
+     <div class="acct"><small>Girokonto · ${esc(res.meta.owner)}</small><small>${iban.slice(0, 4)} •••• •••• •••• ${iban.slice(-4)}</small>
+       <div class="bal">${eur(res.meta.endBalance)}</div><small>Verfügbar</small></div>
+     <div class="txlist">` +
+    [...days].map(([k, list]) => `<div class="daylabel">${dayFmt.format(new Date(k))}</div>` + list.map(t =>
+      `<div class="tx"><div class="ic">${ICONS[t.cat] || '💳'}</div><div><div class="nm">${esc(t.cp.replace(/^(SumUp \*|SPC\*)/, ''))}</div>` +
+      `<div class="sub">${esc(t.cat)}</div></div><div class="am ${t.cents > 0 ? 'pos' : ''}">${t.cents > 0 ? '+' : ''}${eur(t.cents)}</div></div>`).join('')).join('') +
+    `</div>`;
+}
+
+// ---------- Downloads ----------
+function download(name, data, type) {
+  const blob = new Blob([data], { type });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const baseName = () => {
+  const p = current.p;
+  return `testdaten_${p.persona}_${p.format}_${p.from}_bis_${p.to}_${current.res.txs.length}z_seed-${p.seed.replace(/[^\w-]/g, '')}${p.events.length ? '_testfaelle' : ''}`;
+};
+$('dl-csv').onclick = () => {
+  if (!current) return;
+  if (current.p.legacy) download(baseName() + '.csv', toLegacyBytes(current.csv), 'text/csv;charset=windows-1252');
+  else download(baseName() + '.csv', current.csv, 'text/csv;charset=utf-8');
+};
+$('dl-key').onclick = () => current && download(baseName() + '_loesung.csv', toSolutionKey(current.res, current.p.persona), 'text/csv;charset=utf-8');
+
+// ---------- Teilen ----------
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+    const ta = Object.assign(document.createElement('textarea'), { value: text });
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  }
+}
+$('share').onclick = async () => {
+  const link = location.href.split('#')[0] + '#' + toQuery(params());
+  $('share-out').value = link;
+  $('share-out').hidden = false;
+  toast(await copyText(link) ? '✅ Link kopiert. Wer ihn öffnet, bekommt exakt dieselbe Datei.' : 'Link unten markieren und kopieren (Cmd/Strg+C).');
+};
+$('load').onclick = () => {
+  if (applyQuery($('load-in').value.trim())) { run(); toast('✅ Einstellungen aus dem Link geladen.'); $('load-in').value = ''; }
+  else toast('Das sieht nicht nach einem Link aus diesem Tool aus.');
+};
+
+// ---------- Events ----------
+$('reseed').onclick = () => { $('seed').value = Math.random().toString(36).slice(2, 8); linkNote = ''; run(); };
+$('print').onclick = () => window.print();
+for (const id of ['persona', 'format', 'rows', 'from', 'to', 'seed', 'legacy']) $(id).addEventListener('input', () => { linkNote = ''; run(); });
+$('events').addEventListener('change', () => { linkNote = ''; run(); });
+window.addEventListener('hashchange', () => { if (applyQuery(location.hash)) run(); });
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === b.dataset.tab));
+});
+applyQuery(location.hash);
+run();
+</script>
+</body>
+</html>
